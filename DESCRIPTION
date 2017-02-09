@@ -1,0 +1,10 @@
+Package: pmcmcTutorial
+Title: TUTORIAL TO LEARN ABOUT PMCMC
+Version: 0.0.0.900
+Authors@R: person("Marc", "Baguelin", email = "marc.baguelin@phe.gov.uk", role = c("aut", "cre"))
+Description: What the package does (one paragraph).
+Depends: R (>= 3.3.2)
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 5.0.1.9000
