@@ -4,6 +4,24 @@ author: "Marc Baguelin"
 output: html_notebook
 ---
 
+```{r}
+source(file = "R/Volatility_SIS.R")
+```
+
+#Introduction
+This is a tutorial on PMcMC with a special attention to transmission disease modellers.
+
+#Background concepts
+
+##Monte Carlo approximation
+
+##Bayesian inference
+
+##Importance sampling
+
+##Filtering and inference
+
+
 This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
 
 Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*.
@@ -16,7 +34,25 @@ Y_{n} & = & \beta \exp \left ( \frac{X_{n}}{2}\right) W_{n}
 \end{array}$$
 
 ```{r}
-source(file = "R/Volatility_SIS.R")
+simu<-SV_simulate()
+
+plot(simu$X,type="l",col="blue")
+points(simu$Y,pch="*",col="red")
+
+```
+
+```{r}
+#Plot the hidden state of the trajectory
+plot(simu$X,type="l",col="blue")
+
+#Run the particle filter filter
+filterParticles<-SV_SIR(simu$Y)
+
+#Calculate the mean path at each time point
+mu_Xp<-computeMeanPath(filterParticles)
+
+#Plot the filtered hidden states
+points(mu_Xp,pch=19,col="#00aa0066")
 ```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
