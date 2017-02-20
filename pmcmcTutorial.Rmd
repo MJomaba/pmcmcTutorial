@@ -34,7 +34,7 @@ Y_{n} & = & \beta \exp \left ( \frac{X_{n}}{2}\right) W_{n}
 \end{array}$$
 
 ```{r}
-simu<-SV_simulate()
+simu<-SV_simulate(N=500,alpha=0.91,sigma=1,beta=0.5) #changed .5 for orginal 0.91
 
 plot(simu$X,type="l",col="blue")
 points(simu$Y,pch="*",col="red")
@@ -45,7 +45,7 @@ points(simu$Y,pch="*",col="red")
 #Plot the hidden state of the trajectory
 plot(simu$X,type="l",col="blue")
 
-#Run the particle filter filter
+#Run the particle filter
 filterParticles<-SV_SIR(simu$Y)
 
 #Calculate the mean path at each time point
@@ -53,6 +53,22 @@ mu_Xp<-computeMeanPath(filterParticles)
 
 #Plot the filtered hidden states
 points(mu_Xp,pch=19,col="#00aa0066")
+```
+
+```{r}
+Na<-30
+sigma_estimate <- seq(from=0.1,to=15,length.out = Na)
+marginal_likelihood <- rep(0,Na)
+
+for(i in 1:Na)
+{
+  filterParticles<-SV_SIR(simu$Y, Np=1000, sigma=sigma_estimate[i])
+  
+  marginal_likelihood[i]<-prod(colSums(filterParticles$wp)/Np)
+}
+
+plot(sigma_estimate, log(marginal_likelihood))
+
 ```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.

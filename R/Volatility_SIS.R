@@ -28,26 +28,20 @@ SV_SIR<-function(Y, Np=1000, alpha=0.91,sigma=1,beta=0.5)
   gammap<-matrix(rep(0,N*Np),ncol=N)  #partial likelihood
   wp<-matrix(rep(0,N*Np),ncol=N)      #unormalised importance weights
   Wp<-matrix(rep(0,N*Np),ncol=N)      #normalised importance weights
-  Xrp<-matrix(rep(0,N*Np),ncol=N)     #resampled particles
+  #Xrp<-matrix(rep(0,N*Np),ncol=N)     #resampled particles
+  A<-matrix(rep(0,N*Np),ncol=N) #Ancestry of particle
 
   #Initialisation of the algorithm
   Xp[,1]<-rnorm(Np,mean=0, sd=sqrt(sigma^2/(1-alpha^2)))
   gammap[,1]<-dnorm(Xp[,1],mean=0, sd=sqrt(sigma^2/(1-alpha^2)))*dnorm(Y[1],mean=0,sd=beta*exp(Xp[,1]/2))
   wp[,1]<-gammap[,1]/dnorm(Xp[,1],mean=0, sd=sqrt(sigma^2/(1-alpha^2)))
   Wp[,1]<-wp[,1]/sum(wp[,1])
-  index_T<-rep(0,N)
-  index_2<-rep(0,Np)
+
+  partial_likelihood<-sum(wp[,1])/Np
 
   #Sequential calculation of particles and importance weights
   for(i in 2:N)
   {
-    #IS step
-    Xp[,i]<-rnorm(Np,mean=alpha*Xp[,i-1], sd=sigma)
-    #gammap[,i]<-gammap[,i-1]*dnorm(Xp[,i],mean=alpha*Xp[,i-1], sd=1)*dnorm(Y[i],mean=0,sd=beta*exp(Xp[,i]/2))
-    #wp[,i]<-gammap[,i]/dnorm(Xp[,i],mean=alpha*Xp[,i-1], sd=sigma)
-    wp[,i]<-dnorm(Xp[,i],mean=alpha*Xp[,i-1], sd=1)*dnorm(Y[i],mean=0,sd=beta*exp(Xp[,i]/2))/dnorm(Xp[,i],mean=alpha*Xp[,i-1], sd=sigma)
-    Wp[,i]<-wp[,i]/sum(wp[,i])
-
     #Resampling step -using systematic resampling
     U1<-runif(1,min = 0,max = 1/Np)
     cumWj<-0
@@ -56,20 +50,24 @@ SV_SIR<-function(Y, Np=1000, alpha=0.91,sigma=1,beta=0.5)
     for(j in 1:Np)
     {
       cumWjminus<-cumWj
-      cumWj<-cumWj+Wp[j,i]
+      cumWj<-cumWj+Wp[j,i-1]
       if(lU<cumWj) #test if at least one Uk is between two corresponding cumulative Wp
       {
         Nji<-1+floor((cumWj-lU)*Np)
-        Xrp[index:(index+Nji-1),i]<-Xp[j,i]
+        A[index:(index+Nji-1),i]<-j
         lU<-lU+Nji/Np
-        index<-index+Nji
       }
     }
-    Xp[,i]<-Xrp[,i]
-    Wp[,i]<-1/Np
-    index_T[i]<-index-1
+
+    #IS step
+    Xp[,i]<-rnorm(Np,mean=alpha*Xp[A[,i],i-1], sd=sigma)
+    #gammap[,i]<-gammap[,i-1]*dnorm(Xp[,i],mean=alpha*Xp[,i-1], sd=1)*dnorm(Y[i],mean=0,sd=beta*exp(Xp[,i]/2))
+    #wp[,i]<-gammap[,i]/dnorm(Xp[,i],mean=alpha*Xp[,i-1], sd=sigma)
+    wp[,i]<-dnorm(Xp[,i],mean=alpha*Xp[A[,i],i-1], sd=1)*dnorm(Y[i],mean=0,sd=beta*exp(Xp[,i]/2))/dnorm(Xp[,i],mean=alpha*Xp[A[,i],i-1], sd=sigma)
+    Wp[,i]<-wp[,i]/sum(wp[,i])
+
   }
-  return(list(Xp=Xp, Wp=Wp))
+  return(list(Xp=Xp, wp=wp, A=A))
 }
 
 computeMeanPath<-function(particleSet)
@@ -84,7 +82,7 @@ computeMeanPath<-function(particleSet)
   for(i in 1:N)
   {
     ESS[i]<-1/sum(particleSet$Wp[,i]^2)
-    mu_Xp[i]<-sum(particleSet$Xp[,i]*particleSet$Wp[,i])
+    mu_Xp[i]<-sum(particleSet$Xp[,i]*particleSet$wp[,i])/sum(particleSet$wp[,i])
   }
 
   return(mu_Xp)
