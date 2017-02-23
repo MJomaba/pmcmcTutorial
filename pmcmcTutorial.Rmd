@@ -6,6 +6,7 @@ output: html_notebook
 
 ```{r}
 source(file = "R/Volatility_SIS.R")
+source(file = "R/ReedFrost.R")
 ```
 
 #Introduction
@@ -56,8 +57,8 @@ points(mu_Xp,pch=19,col="#00aa0066")
 ```
 
 ```{r}
-Na<-30
-sigma_estimate <- seq(from=0.1,to=15,length.out = Na)
+Na<-150
+sigma_estimate <- seq(from=0.1,to=7,length.out = Na)
 marginal_likelihood <- rep(0,Na)
 
 for(i in 1:Na)
@@ -69,6 +70,13 @@ for(i in 1:Na)
 
 plot(sigma_estimate, log(marginal_likelihood))
 
+```
+```{r}
+simuRF<-simulateReedFrost(Nsim=100, fig=F)
+obsRF<-rnbinom(n=50,mu=.05*simu$I[5,], size=10)
+
+plot(obsRF, pch="*", col="red")
+lines(simu$I[5,]*.05,col="blue")
 ```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.

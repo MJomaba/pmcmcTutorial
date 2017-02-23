@@ -32,7 +32,7 @@ SV_SIR<-function(Y, Np=1000, alpha=0.91,sigma=1,beta=0.5)
   A<-matrix(rep(0,N*Np),ncol=N) #Ancestry of particle
 
   #Initialisation of the algorithm
-  Xp[,1]<-rnorm(Np,mean=0, sd=sqrt(sigma^2/(1-alpha^2)))
+  Xp[,1]<-rnorm(Np,mean=0, sd=sqrt(sigma^2/(1-alpha^2))) #initial proposal
   gammap[,1]<-dnorm(Xp[,1],mean=0, sd=sqrt(sigma^2/(1-alpha^2)))*dnorm(Y[1],mean=0,sd=beta*exp(Xp[,1]/2))
   wp[,1]<-gammap[,1]/dnorm(Xp[,1],mean=0, sd=sqrt(sigma^2/(1-alpha^2)))
   Wp[,1]<-wp[,1]/sum(wp[,1])
