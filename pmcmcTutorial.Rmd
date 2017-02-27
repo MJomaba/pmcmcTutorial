@@ -72,11 +72,10 @@ plot(sigma_estimate, log(marginal_likelihood))
 
 ```
 ```{r}
-simuRF<-simulateReedFrost(Nsim=100, fig=F)
-obsRF<-rnbinom(n=50,mu=.05*simu$I[5,], size=10)
+simuRF<-RF_with_obs()
 
-plot(obsRF, pch="*", col="red")
-lines(simu$I[5,]*.05,col="blue")
+plot(simuRF$Y, pch="*", col="red")
+lines(simuRF$X[,2]*.05,col="blue")
 ```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
