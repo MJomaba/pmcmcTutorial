@@ -1,7 +1,10 @@
 ---
 title: "pmcmc Tutorial"
 author: "Marc Baguelin"
-output: html_notebook
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document: default
 ---
 
 ```{r}
@@ -12,9 +15,21 @@ source(file = "R/ReedFrost.R")
 #Introduction
 This is a tutorial on PMcMC with a special attention to transmission disease modellers.
 
+This tutorial has been built by taking material from different references
+Andrieu et al.
+Chopin & Papaspiliopoulos
+Robert & Casela
+
 #Background concepts
 
+pMcMC is built out of several key concepts from statistics. It is important to understand well each of these elementary concepts.
+
 ##Monte Carlo approximation
+
+Monte Carlo is a numerical method which allows to calculate easily (or at least relative to other methods) integrals. The method use the definition of expectation as an integral over a probability measure.
+$$E_{q} [\phi(X) ] = \int_{X} \phi(x)q(x)dx$$
+
+$$\frac{1}{N} \sum \limits^{N}_{n=1}\phi(X^{n}), \space X^{n} \sim q,$$
 
 ##Bayesian inference
 
@@ -37,7 +52,7 @@ Y_{n} & = & \beta \exp \left ( \frac{X_{n}}{2}\right) W_{n}
 ```{r}
 simu<-SV_simulate(N=500,alpha=0.91,sigma=1,beta=0.5) #changed .5 for orginal 0.91
 
-plot(simu$X,type="l",col="blue")
+plot(simu$X,type="l",col="blue",ylim=c(-10,10))
 points(simu$Y,pch="*",col="red")
 
 ```
@@ -58,12 +73,13 @@ points(mu_Xp,pch=19,col="#00aa0066")
 
 ```{r}
 Na<-150
+Np<-1000
 sigma_estimate <- seq(from=0.1,to=7,length.out = Na)
 marginal_likelihood <- rep(0,Na)
 
 for(i in 1:Na)
 {
-  filterParticles<-SV_SIR(simu$Y, Np=1000, sigma=sigma_estimate[i])
+  filterParticles<-SV_SIR(simu$Y, Np=Np, sigma=sigma_estimate[i])
   
   marginal_likelihood[i]<-prod(colSums(filterParticles$wp)/Np)
 }
@@ -76,6 +92,16 @@ simuRF<-RF_with_obs()
 
 plot(simuRF$Y, pch="*", col="red")
 lines(simuRF$X[,2]*.05,col="blue")
+```
+```{r}
+#SMC on the observed epidemic
+filter_particlesRF <- RF_SIR(simuRF$Y)
+summary_PF_RF <- computeMeanPathRF(filter_particlesRF)
+plot(summary_PF_RF$mu_Xp[,3]*1.3,col="white",xlab="Time",ylab="Number of cases")
+polygon(c(1:50,50:1),c(summary_PF_RF$mu_Xp[,2],summary_PF_RF$mu_Xp[50:1,3]),col="#00bb0033",border=NA)
+lines(simuRF$X[,2],col="blue",lwd=2)
+lines(summary_PF_RF$mu_Xp[,1],col="#00bb00ff",lwd=2)
+points(simuRF$Y/0.05, pch="*", col="red")
 ```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.

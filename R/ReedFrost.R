@@ -35,8 +35,7 @@ RF_with_obs<-function(Npop=10000, p=0.00015)
   return(list(X=X,Y=Y))
 }
 
-
-RF_SIR <- function(Y, Np=1000, Npop=10000)
+RF_SIR <- function(Y, Np=1000, Npop=10000, p=0.00015)
 {
   N=length(Y)
 
@@ -50,8 +49,57 @@ RF_SIR <- function(Y, Np=1000, Npop=10000)
 
   #Initialisation of the algorithm
   Xp[,1,1]<-Npop-rpois(n = Np, lambda = 20) #initialisation of the size of susceptible population for each particle
-  Xp[,1,2]<-rpois(n=1, lambda = 5) #initialisation of the size of the infectious population for each particle
-  gammap[,1]<-dnorm(Xp[,1],mean=0, sd=sqrt(sigma^2/(1-alpha^2)))*dnorm(Y[1],mean=0,sd=beta*exp(Xp[,1]/2))
-  wp[,1]<-gammap[,1]/dnorm(Xp[,1],mean=0, sd=sqrt(sigma^2/(1-alpha^2)))
+  Xp[,1,2]<-rpois(n= Np, lambda = 5) #initialisation of the size of the infectious population for each particle
+  gammap[,1]<-dpois(Npop-Xp[,1,1], lambda = 20)*dpois(Xp[,1,2],lambda=5)*dnbinom(Y[1],mu=0.05*Xp[,1,2],size=10)
+
+  wp[,1]<-gammap[,1]/(dpois(Npop-Xp[,1,1], lambda = 20)*dpois(Xp[,1,2],lambda=5))
   Wp[,1]<-wp[,1]/sum(wp[,1])
+
+  #Sequential calculation of particles and importance weights
+  for(i in 2:N)
+  {
+    #Resampling step -using systematic resampling
+    U1<-runif(1,min = 0,max = 1/Np)
+    cumWj<-0
+    lU<-U1
+    index<-1
+    for(j in 1:Np)
+    {
+      cumWjminus<-cumWj
+      cumWj<-cumWj+Wp[j,i-1]
+      if(lU<cumWj) #test if at least one Uk is between two corresponding cumulative Wp
+      {
+        Nji<-1+floor((cumWj-lU)*Np)
+        A[index:(index+Nji-1),i]<-j
+        lU<-lU+Nji/Np
+      }
+    }
+
+    #IS step
+    Xp[,i,2]<-rbinom(Np,size=Xp[,i-1,1],1-(1-p)^Xp[,i-1,2])
+    Xp[,i,1]<-Xp[,i-1,1]-Xp[,i,2]
+    wp[,i]<-dbinom(Xp[,i,2],size=Xp[,i-1,1],1-(1-p)^Xp[,i-1,2])*dnbinom(Y[i],mu=0.05*Xp[,i,2],size=10)/dbinom(Xp[,i,2],size=Xp[,i-1,1],1-(1-p)^Xp[,i-1,2])
+    Wp[,i]<-wp[,i]/sum(wp[,i])
+  }
+  return(list(Xp=Xp, wp=wp, A=A))
+}
+
+computeMeanPathRF<-function(particleSet)
+{
+  N=length(particleSet$Xp[1,,1])
+
+  #Compute the mean particles path
+  mu_Xp<-matrix(rep(0,3*N),ncol=3)
+  ESS<-rep(0,N)
+  low_Xp<-rep(0,N)
+  up_Xp<-rep(0,N)
+  for(i in 1:N)
+  {
+    #ESS[i]<-1/sum(particleSet$Wp[,i]^2)
+    mu_Xp[i,1]<-sum(particleSet$Xp[,i,2]*particleSet$wp[,i])/sum(particleSet$wp[,i])
+    #mu_Xp[i,1]<-mean(particleSet$Xp[rmultinom(N,N,prob=particleSet$wp[,i]),i,2])
+    mu_Xp[i,2:3]<-quantile(sample(particleSet$Xp[,i,2],N,replace=T,prob=particleSet$wp[,i]),c(0.025,0.975))
+  }
+
+  return(list(ESS=ESS,mu_Xp=mu_Xp))
 }

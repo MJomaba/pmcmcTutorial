@@ -63,7 +63,7 @@ SV_SIR<-function(Y, Np=1000, alpha=0.91,sigma=1,beta=0.5)
     Xp[,i]<-rnorm(Np,mean=alpha*Xp[A[,i],i-1], sd=sigma)
     #gammap[,i]<-gammap[,i-1]*dnorm(Xp[,i],mean=alpha*Xp[,i-1], sd=1)*dnorm(Y[i],mean=0,sd=beta*exp(Xp[,i]/2))
     #wp[,i]<-gammap[,i]/dnorm(Xp[,i],mean=alpha*Xp[,i-1], sd=sigma)
-    wp[,i]<-dnorm(Xp[,i],mean=alpha*Xp[A[,i],i-1], sd=1)*dnorm(Y[i],mean=0,sd=beta*exp(Xp[,i]/2))/dnorm(Xp[,i],mean=alpha*Xp[A[,i],i-1], sd=sigma)
+    wp[,i]<-dnorm(Xp[,i],mean=alpha*Xp[A[,i],i-1], sd=sigma)*dnorm(Y[i],mean=0,sd=beta*exp(Xp[,i]/2))/dnorm(Xp[,i],mean=alpha*Xp[A[,i],i-1], sd=sigma)
     Wp[,i]<-wp[,i]/sum(wp[,i])
 
   }
