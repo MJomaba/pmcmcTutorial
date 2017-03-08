@@ -103,3 +103,12 @@ computeMeanPathRF<-function(particleSet)
 
   return(list(ESS=ESS,mu_Xp=mu_Xp))
 }
+
+RF_PMMH <- function(Y, Np=1000, Nchain=1000, Npop=10000, p0=0.0001)
+{
+  for(i in 1:Nchain)
+  {
+    filterParticles<-RF_SIR(simuRF$Y, Np=Np, p=p_estimate[i])
+    marginal_likelihood[i]<-prod(colSums(filterParticles$wp)/Np)
+  }
+}

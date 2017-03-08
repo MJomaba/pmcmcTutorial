@@ -1,19 +1,23 @@
 ---
-title: "pmcmc Tutorial"
+title: "A pmcmc Tutorial for infectious disease modellers"
 author: "Marc Baguelin"
 output:
-  pdf_document: default
+  pdf_document:
+    toc: true
   html_notebook: default
   html_document: default
 ---
 
 ```{r}
+#Files with the code of the functions used in the tutorial
 source(file = "R/Volatility_SIS.R")
 source(file = "R/ReedFrost.R")
 ```
 
 #Introduction
 This is a tutorial on PMcMC with a special attention to transmission disease modellers.
+
+This tutorial will guide you through the basic concepts necessary to understand particle Markov chain Monte Carlo (pMcMC) and will let you build an algorithm to perform pMcMC on the Reed-Frost model, one of the simplest of the stochastic epidemic models. 
 
 This tutorial has been built by taking material from different references
 Andrieu et al.
@@ -22,27 +26,36 @@ Robert & Casela
 
 #Background concepts
 
-pMcMC is built out of several key concepts from statistics. It is important to understand well each of these elementary concepts.
+pMcMC is built out of several key concepts from statistics. One of the problems for mathematical modellers to get into Particle MCMC, is in my opinion, that we might not be familiar with some of these (elementary) statistical concepts. It is important to understand well each of these elementary concepts.
+
+Another difficulty arises as many of these key concepts have connectiongs in different disciplines and sometimes have been developed concurrently under different names.
 
 ##Monte Carlo approximation
 
-Monte Carlo is a numerical method which allows to calculate easily (or at least relative to other methods) integrals. The method use the definition of expectation as an integral over a probability measure.
-$$E_{q} [\phi(X) ] = \int_{X} \phi(x)q(x)dx$$
+Monte Carlo is a numerical method which allows to calculate easily (or at least relatively easily compared with other methods) integrals. The method use the definition of expectation as an integral over a probability measure.
+$$\mathbb{E}_{f} [h(X) ] = \int_{\mathcal{X}} h(x)f(x)dx$$
 
 $$\frac{1}{N} \sum \limits^{N}_{n=1}\phi(X^{n}), \space X^{n} \sim q,$$
 
 ##Bayesian inference
 
+Very often, we want to relate a model of a phenomenon with some observations of this phenomenon. Most of the time the model is defined as equations describing the mechanisms of the phenomenon (mechanistic model). We thus usually have and idea on . The fundamental idea behind Bayesian inference is to use Bayes' theorem to derive the probability of  
+
 ##Importance sampling
 
-##Filtering and inference
+The idea behind importance sampling is simple. Monte Carlo approximation relies on the ability to draw from a certain distribution (q). In many cases, this might be complicated or inefficient. The idea is to sample from a simpler distribution and then calculate "weights" associated with these samples in order be able to derive a Monte Carlo approximation with these samples.
 
+###Basic algorithm
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+Importance sampling is based on the simple 
+$$\mathbb{E}_{f} [h(X) ] = \int_{\mathcal{X}} h(x)\frac{f(x)}{g(x)}g(x)dx=\mathbb{E}_{g}\left [\frac{h(X)f(X)}{g(X)} \right ].$$
+**Question of support
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*.
+###Importance sampling resampling
 
-Stochastic volatility
+##State space models
+
+###Example 1. Volatility model
 
 $$\begin{array}{rcl}
 X_{n} & = & \alpha X_{n-1} + \sigma V_{n}\\
@@ -52,10 +65,60 @@ Y_{n} & = & \beta \exp \left ( \frac{X_{n}}{2}\right) W_{n}
 ```{r}
 simu<-SV_simulate(N=500,alpha=0.91,sigma=1,beta=0.5) #changed .5 for orginal 0.91
 
-plot(simu$X,type="l",col="blue",ylim=c(-10,10))
+plot(simu$X,type="l",col="blue",ylim=c(-10,10),xlab="Time")
 points(simu$Y,pch="*",col="red")
 
 ```
+
+###Example 2. Reed-Frost model with Negative Binomial observation
+
+The Reed-Frost model is a dicrete-time stochastic model, with each time step representing a new generation of infectious agents. During the period of time between two timesteps, each of the susceptible individuals has a probability $p$ of getting infected by any infectious individual. The probability of escaping infection from all the infectious individuals is $(1-p)^{I_{n-1}}$ and thus the number of infectious individuals at the next time step (i.e. the ones who did not escape infection) can be drawn from a binomial distribution with probability $1-(1-p)^{I_{n-1}}$. On top of this we assume that we can only detect a fraction  
+
+$$\begin{array}{rcl}
+I_{n} & \sim & Bin \left (S_{n-1}, 1-(1-p)^{I_{n-1}} \right )\\
+S_{n} & = & S_{n-1} - I_{n} 
+\end{array}$$
+
+The Reed-Frost model can be made into a state space model by using $(S_{n},I_{n})$ as the state space and writing an observation function. For example if we assume, that on average only a proportion $p_{obs}$ of the infected individuals are observed and that the observed cases are distributed following a neg-binomial of size $s$.
+
+$$\begin{array}{rcl}
+X_{n}&=&(S_{n},I_{n})\\
+Y_{n} &\sim& NegBin(\mu=p_{obs}*I_{n}, size=s) 
+\end{array}$$
+
+```{r}
+#Simulate a Reed-Frost model with negative binomial observation
+simuRF<-RF_with_obs()
+
+#Plot of the observation
+plot(simuRF$Y, pch=18, col="red", xlab="Number of generations", ylab="Number of cases")
+
+#Blue line representing the actual underlying epidemics scaled by the proportion detected
+lines(simuRF$X[,2]*.05,col="#0000ff77", lwd=4)
+```
+
+##Filtering and inference
+
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*.
+
+
+
+
+
+#Sequential Monte Carlo
+
+Sequential Monte Carlo (SMC) is a methodology which trying to exploit the sequential time structure of the model to calculate efficiently some quantities. In particular it is particularly useful to infer the hidden states of the model (filtering) but also to calculate the overall (i.e. marginalising over the possible hidden states) probability of the model to generate the data (the marginal likelihood). This is this property which allows to integrate SMC with other algorithms from computational statistics (such as MCMC) to perform jointly inference of hidden states and model parameters.
+
+##Sequential importance sampling
+
+
+
+##Sequential sampling resampling
+
+###Example 1 Volatility
 
 ```{r}
 #Plot the hidden state of the trajectory
@@ -71,39 +134,48 @@ mu_Xp<-computeMeanPath(filterParticles)
 points(mu_Xp,pch=19,col="#00aa0066")
 ```
 
-```{r}
-Na<-150
-Np<-1000
-sigma_estimate <- seq(from=0.1,to=7,length.out = Na)
-marginal_likelihood <- rep(0,Na)
+###Example 2 Reed-Frost epidemic model
 
-for(i in 1:Na)
-{
-  filterParticles<-SV_SIR(simu$Y, Np=Np, sigma=sigma_estimate[i])
-  
-  marginal_likelihood[i]<-prod(colSums(filterParticles$wp)/Np)
-}
 
-plot(sigma_estimate, log(marginal_likelihood))
 
-```
-```{r}
-simuRF<-RF_with_obs()
-
-plot(simuRF$Y, pch="*", col="red")
-lines(simuRF$X[,2]*.05,col="blue")
-```
 ```{r}
 #SMC on the observed epidemic
 filter_particlesRF <- RF_SIR(simuRF$Y)
 summary_PF_RF <- computeMeanPathRF(filter_particlesRF)
-plot(summary_PF_RF$mu_Xp[,3]*1.3,col="white",xlab="Time",ylab="Number of cases")
+plot(simuRF$Y/0.05,col="white",xlab="Time",ylab="Number of cases")
+
+#95% confidence interval
 polygon(c(1:50,50:1),c(summary_PF_RF$mu_Xp[,2],summary_PF_RF$mu_Xp[50:1,3]),col="#00bb0033",border=NA)
+
+#Hidden Markov model
 lines(simuRF$X[,2],col="blue",lwd=2)
+
+#Mean of particles
 lines(summary_PF_RF$mu_Xp[,1],col="#00bb00ff",lwd=2)
-points(simuRF$Y/0.05, pch="*", col="red")
+
+#Observations
+points(simuRF$Y/0.05, pch=18, col="red")
+legend("topright", legend = c("Scaled observations","95% CI of particles","Mean particles","Hidden states"), bty="n", col=c("red","#00bb0033","#00bb00ff","blue"), pch=c(18,15,NA,NA), pt.cex=c(1,2,1,1),lty=c(0,0,1,1), lwd=2)
+
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+#Particle MCMC
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file).
+We will use in this last section the Particle marginal Metropolis–Hastings sampler from Andrieu et al.
+
+```{r}
+Na<-50
+Np<-5000
+p_estimate <- seq(from=0.00014,to=0.00017,length.out = Na)
+marginal_likelihood <- rep(0,Na)
+
+for(i in 1:Na)
+{
+  filterParticles<-RF_SIR(simuRF$Y, Np=Np, p=p_estimate[i])
+  
+  marginal_likelihood[i]<-prod(colSums(filterParticles$wp)/Np)
+}
+
+plot(p_estimate, marginal_likelihood, xlab="probability of transmission", ylab="Marginal likelihood")
+abline(v=0.00015, col="red")
+```
