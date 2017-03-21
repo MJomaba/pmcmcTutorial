@@ -104,11 +104,35 @@ computeMeanPathRF<-function(particleSet)
   return(list(ESS=ESS,mu_Xp=mu_Xp))
 }
 
-RF_PMMH <- function(Y, Np=1000, Nchain=1000, Npop=10000, p0=0.0001)
+RF_PMMH <- function(Y, Np=1000, Nchain=1000, Npop=10000, p0=0.0001, PBar = T)
 {
-  for(i in 1:Nchain)
+  marginal_likelihood <- rep(0, Nchain)
+  p_estimate <- rep(0, Nchain)
+
+  p_estimate[1]<-p0
+
+  filterParticles<-RF_SIR(simuRF$Y, Np=Np, p=p_estimate[1])
+  marginal_likelihood[1]<-prod(colSums(filterParticles$wp)/Np)
+
+  if(PBar) pb <- txtProgressBar(min = 0, max = Nchain, style=3)
+
+  for(i in 2:Nchain)
   {
-    filterParticles<-RF_SIR(simuRF$Y, Np=Np, p=p_estimate[i])
-    marginal_likelihood[i]<-prod(colSums(filterParticles$wp)/Np)
+    if(PBar) setTxtProgressBar(pb,i)
+
+    p_prop <- p_estimate[i-1] + rnorm(1,sd=0.01/Np)
+
+    filterParticles<-RF_SIR(simuRF$Y, Np=Np, p= p_prop)
+    marginal_likelihood_prop<-prod(colSums(filterParticles$wp)/Np)
+
+    if(runif(n=1) < marginal_likelihood_prop/marginal_likelihood[i-1])
+    {
+      p_estimate[i]<-p_prop
+      marginal_likelihood[i]<-marginal_likelihood_prop
+    } else {
+      p_estimate[i]<-p_estimate[i-1]
+      marginal_likelihood[i]<-marginal_likelihood[i-1]
+    }
   }
+  return(list(LL=marginal_likelihood,p=p_estimate))
 }

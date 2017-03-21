@@ -2,10 +2,10 @@
 title: "A pmcmc Tutorial for infectious disease modellers"
 author: "Marc Baguelin"
 output:
-  pdf_document:
-    toc: true
   html_notebook: default
   html_document: default
+  pdf_document:
+    toc: yes
 ---
 
 ```{r}
@@ -97,16 +97,29 @@ plot(simuRF$Y, pch=18, col="red", xlab="Number of generations", ylab="Number of 
 lines(simuRF$X[,2]*.05,col="#0000ff77", lwd=4)
 ```
 
+###Example 3: SEIR model with varying transmission modelled as a diffusion
+
+Dureau et al.
+
+$$
+\left\{
+\begin{array}{ccl}
+\frac{dx}{dt}&=&-\beta(t) x y\\
+\frac{dy}{dt}&=&\beta(t) x y -\nu y\\
+\frac{dz}{dt}&=&\nu y\\
+\end{array}
+\right.
+$$
+
 ##Filtering and inference
 
+When confronting a SSM with data, two common problems pop up. We might want to know what is the actual hidden trajectory of the system, this is particularly important in situations where you want to do some sort of control/reactive intervention. This type of question is called "Filtering" i.e. recovering the actual state of the system through the noise and distortion created by the observation process. The filtering problem assumes that the parameter $\theta$ of the models are fully known, all the uncertainty in the status coming from the stochasticity of the processes and the noise
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+$$p_{\theta}(X_{1:T}|Y_{1:T})$$
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*.
+Another problem is to estimate which parameters are more likely to be the correct ones given the observation. In the case of SSM, it means infer jointly
 
-
-
-
+$$p(\theta,x_{1:T}|Y_{1:T}) \propto p_{\theta}(X_{1:T},Y_{1:T})p(\theta)$$
 
 #Sequential Monte Carlo
 
@@ -142,7 +155,7 @@ points(mu_Xp,pch=19,col="#00aa0066")
 #SMC on the observed epidemic
 filter_particlesRF <- RF_SIR(simuRF$Y)
 summary_PF_RF <- computeMeanPathRF(filter_particlesRF)
-plot(simuRF$Y/0.05,col="white",xlab="Time",ylab="Number of cases")
+plot(NULL,xlim=c(0,50),ylim=c(0,max(summary_PF_RF$mu_Xp[,3],simuRF$Y/0.05))  ,col="white",xlab="Time",ylab="Number of cases")
 
 #95% confidence interval
 polygon(c(1:50,50:1),c(summary_PF_RF$mu_Xp[,2],summary_PF_RF$mu_Xp[50:1,3]),col="#00bb0033",border=NA)
@@ -151,15 +164,13 @@ polygon(c(1:50,50:1),c(summary_PF_RF$mu_Xp[,2],summary_PF_RF$mu_Xp[50:1,3]),col=
 lines(simuRF$X[,2],col="blue",lwd=2)
 
 #Mean of particles
-lines(summary_PF_RF$mu_Xp[,1],col="#00bb00ff",lwd=2)
+lines(summary_PF_RF$mu_Xp[,1],col="#00bb0066",lwd=2)
 
 #Observations
 points(simuRF$Y/0.05, pch=18, col="red")
-legend("topright", legend = c("Scaled observations","95% CI of particles","Mean particles","Hidden states"), bty="n", col=c("red","#00bb0033","#00bb00ff","blue"), pch=c(18,15,NA,NA), pt.cex=c(1,2,1,1),lty=c(0,0,1,1), lwd=2)
+legend("topright", legend = c("Scaled observations","95% CI of particles","Mean particles","Hidden states"), bty="n", col=c("red","#00bb0033","#00bb0066","blue"), pch=c(18,15,NA,NA), pt.cex=c(1,2,1,1),lty=c(0,0,1,1), lwd=2)
 
 ```
-
-#Particle MCMC
 
 We will use in this last section the Particle marginal Metropolis–Hastings sampler from Andrieu et al.
 
@@ -179,3 +190,18 @@ for(i in 1:Na)
 plot(p_estimate, marginal_likelihood, xlab="probability of transmission", ylab="Marginal likelihood")
 abline(v=0.00015, col="red")
 ```
+
+#Particle MCMC
+
+```{r}
+#Run a particle Marginal Metropolis Hastings algorithm
+inference_results<-RF_PMMH(simuRF$Y, PBar=F, p0=0.0001)
+```
+
+
+```{r}
+plot(inference_results$p, ylim=c(0,0.00020))
+abline(h=0.00015,col="red")
+```
+
+
