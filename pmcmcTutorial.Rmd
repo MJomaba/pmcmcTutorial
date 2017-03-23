@@ -32,10 +32,10 @@ Another difficulty arises as many of these key concepts have connectiongs in dif
 
 ##Monte Carlo approximation
 
-Monte Carlo is a numerical method which allows to calculate easily (or at least relatively easily compared with other methods) integrals. The method use the definition of expectation as an integral over a probability measure.
+One of most common problem in statistical inference is to compute integrals. Monte Carlo is a numerical method which allows to calculate easily (or at least relatively easily compared with other methods) integrals. The method use the definition of expectation as an integral over a probability measure.
 $$\mathbb{E}_{f} [h(X) ] = \int_{\mathcal{X}} h(x)f(x)dx$$
 
-$$\frac{1}{N} \sum \limits^{N}_{n=1}\phi(X^{n}), \space X^{n} \sim q,$$
+$$\frac{1}{N} \sum \limits^{N}_{n=1}h(X^{n}), \space X^{n} \sim f,$$
 
 ##Bayesian inference
 
@@ -47,9 +47,33 @@ The idea behind importance sampling is simple. Monte Carlo approximation relies 
 
 ###Basic algorithm
 
-Importance sampling is based on the simple 
+Importance sampling is based on the simple identity
 $$\mathbb{E}_{f} [h(X) ] = \int_{\mathcal{X}} h(x)\frac{f(x)}{g(x)}g(x)dx=\mathbb{E}_{g}\left [\frac{h(X)f(X)}{g(X)} \right ].$$
-**Question of support
+And thus $\mathbb{E}_{f} [h(X) ]$ can be estimated as
+$$\frac{1}{n} \sum\limits_{j=1}^{n}\frac{f(X_{j})}{g(X_{j})}h(X_j)\rightarrow\mathbb{E}_{f} [h(X) ]$$
+with $X_{j}$ drawn from $g$. $g$ can be chosen arbitrary as soon as supp($g$) $\supset$ supp($h \times f$) with supp$(f)=\{x \in X | f(x) \neq 0 \}$ for $f: X \rightarrow \mathbb{R}$.
+
+###Example. Estimation the tail of a normal distribution
+
+Let's assume that we are interested in computing $P(Z>4.5)$ for $Z \sim \mathcal{N}(0,1)$
+
+```{r}
+pnorm(-4.5)
+```
+
+So to compute $P(Z>4.5)$ using a naive Monte Carlo estimate is very unefficient as a hit is produced on average every 3 millions or so draws. To get a stable estimate we would need a huge number of simulations.
+Using importance sampling, we can chose another distribution, valued on $[ 4.5 , +\infty[$ to calculate $P(Z>4.5)$. A natural choice is
+$$g(y)=\frac{e^{-y}}{\int_{4.5}^{\infty}e^{-x}dx }=e^{-(y-4.5)}$$
+which leads to the following importance sampling estimator
+$$\frac{1}{n} \sum\limits_{i=1}^{n} \frac{f(Y^i)}{g(Y^i)}=\frac{1}{n}\sum\limits_{i=1}^{n} \frac{e^{-Y^2/2+Y_i-4.5}}{\sqrt{2 \pi}}$$
+
+```{r}
+Nsim=10^3
+y=rexp(Nsim)+4.5
+weit=dnorm(y)/dexp(y-4.5)
+plot(cumsum(weit)/1:Nsim,type="l")
+abline(a=pnorm(-4.5),b=0,col="red")
+```
 
 ###Importance sampling resampling
 
