@@ -1,11 +1,12 @@
 ---
-title: "A pmcmc Tutorial for infectious disease modellers"
+title: "A PMCMC Tutorial for infectious disease modellers"
 author: "Marc Baguelin"
 output:
-  html_notebook: default
   html_document: default
+  html_notebook: default
   pdf_document:
     toc: yes
+always_allow_html: yes
 ---
 
 ```{r}
@@ -15,9 +16,9 @@ source(file = "R/ReedFrost.R")
 ```
 
 #Introduction
-This is a tutorial on PMcMC with a special attention to transmission disease modellers.
+This is a tutorial on PMCMC with a special attention to transmission disease modellers.
 
-This tutorial will guide you through the basic concepts necessary to understand particle Markov chain Monte Carlo (pMcMC) and will let you build an algorithm to perform pMcMC on the Reed-Frost model, one of the simplest of the stochastic epidemic models. 
+This tutorial will guide you through the basic concepts necessary to understand particle Markov chain Monte Carlo (PMCMC) and will let you build an algorithm to perform pMcMC on the Reed-Frost model, one of the simplest of the stochastic epidemic models. 
 
 This tutorial has been built by taking material from different references
 Andrieu et al.
@@ -30,9 +31,18 @@ pMcMC is built out of several key concepts from statistics. One of the problems 
 
 Another difficulty arises as many of these key concepts have connectiongs in different disciplines and sometimes have been developed concurrently under different names.
 
+```{r, echo=F}
+DiagrammeR::grViz("
+digraph rmarkdown{
+'Monte Carlo' -> 'Importance Sampling' -> 'Sequential IS' -> 'SMC';
+'Monte Carlo' -> 'MCMC';
+{'MCMC' 'SMC'} -> 'Particle MCMC'
+}", height=300)
+```
+
 ##Monte Carlo approximation
 
-One of most common problem in statistical inference is to compute integrals. Monte Carlo is a numerical method which allows to calculate easily (or at least relatively easily compared with other methods) integrals. The method use the definition of expectation as an integral over a probability measure.
+Monte Carlo methods have originated in the 1940's during the effort by allied physicist to develop a nuclear bomb in Los Alamos. One of most common problem in statistical inference is to compute integrals. Monte Carlo is a numerical method which allows to calculate easily (or at least relatively easily compared with other methods) integrals. The method use the definition of expectation as an integral over a probability measure.
 $$\mathbb{E}_{f} [h(X) ] = \int_{\mathcal{X}} h(x)f(x)dx$$
 
 $$\frac{1}{N} \sum \limits^{N}_{n=1}h(X^{n}), \space X^{n} \sim f,$$
@@ -53,7 +63,7 @@ And thus $\mathbb{E}_{f} [h(X) ]$ can be estimated as
 $$\frac{1}{n} \sum\limits_{j=1}^{n}\frac{f(X_{j})}{g(X_{j})}h(X_j)\rightarrow\mathbb{E}_{f} [h(X) ]$$
 with $X_{j}$ drawn from $g$. $g$ can be chosen arbitrary as soon as supp($g$) $\supset$ supp($h \times f$) with supp$(f)=\{x \in X | f(x) \neq 0 \}$ for $f: X \rightarrow \mathbb{R}$.
 
-###Example. Estimation the tail of a normal distribution
+###Example. Estimating the tail of a normal distribution
 
 Let's assume that we are interested in computing $P(Z>4.5)$ for $Z \sim \mathcal{N}(0,1)$
 
@@ -68,9 +78,16 @@ which leads to the following importance sampling estimator
 $$\frac{1}{n} \sum\limits_{i=1}^{n} \frac{f(Y^i)}{g(Y^i)}=\frac{1}{n}\sum\limits_{i=1}^{n} \frac{e^{-Y^2/2+Y_i-4.5}}{\sqrt{2 \pi}}$$
 
 ```{r}
+#Number of Monte Carlo samples
 Nsim=10^3
+
+#Draw samples from the truncated exponential
 y=rexp(Nsim)+4.5
+
+#Calculation of the importance weights
 weit=dnorm(y)/dexp(y-4.5)
+
+#Plot the the Monte-Carlo estimator and in red the true value
 plot(cumsum(weit)/1:Nsim,type="l")
 abline(a=pnorm(-4.5),b=0,col="red")
 ```
@@ -96,7 +113,7 @@ points(simu$Y,pch="*",col="red")
 
 ###Example 2. Reed-Frost model with Negative Binomial observation
 
-The Reed-Frost model is a dicrete-time stochastic model, with each time step representing a new generation of infectious agents. During the period of time between two timesteps, each of the susceptible individuals has a probability $p$ of getting infected by any infectious individual. The probability of escaping infection from all the infectious individuals is $(1-p)^{I_{n-1}}$ and thus the number of infectious individuals at the next time step (i.e. the ones who did not escape infection) can be drawn from a binomial distribution with probability $1-(1-p)^{I_{n-1}}$. On top of this we assume that we can only detect a fraction  
+The Reed-Frost model is a dicrete-time stochastic model, with each time step representing a new generation of infectious agents. During the period of time between two timesteps, each of the susceptible individuals has a probability $p$ of getting infected by any infectious individual. The probability of escaping infection from all the infectious individuals is $(1-p)^{I_{n-1}}$ and thus the number of infectious individuals at the next time step (i.e. the ones who did not escape infection) can be drawn from a binomial distribution with probability $1-(1-p)^{I_{n-1}}$. On top of this we assume that we can only detect a fraction of the cases. 
 
 $$\begin{array}{rcl}
 I_{n} & \sim & Bin \left (S_{n-1}, 1-(1-p)^{I_{n-1}} \right )\\
@@ -121,27 +138,13 @@ plot(simuRF$Y, pch=18, col="red", xlab="Number of generations", ylab="Number of 
 lines(simuRF$X[,2]*.05,col="#0000ff77", lwd=4)
 ```
 
-###Example 3: SEIR model with varying transmission modelled as a diffusion
-
-Dureau et al.
-
-$$
-\left\{
-\begin{array}{ccl}
-\frac{dx}{dt}&=&-\beta(t) x y\\
-\frac{dy}{dt}&=&\beta(t) x y -\nu y\\
-\frac{dz}{dt}&=&\nu y\\
-\end{array}
-\right.
-$$
-
 ##Filtering and inference
 
 When confronting a SSM with data, two common problems pop up. We might want to know what is the actual hidden trajectory of the system, this is particularly important in situations where you want to do some sort of control/reactive intervention. This type of question is called "Filtering" i.e. recovering the actual state of the system through the noise and distortion created by the observation process. The filtering problem assumes that the parameter $\theta$ of the models are fully known, all the uncertainty in the status coming from the stochasticity of the processes and the noise
 
 $$p_{\theta}(X_{1:T}|Y_{1:T})$$
 
-Another problem is to estimate which parameters are more likely to be the correct ones given the observation. In the case of SSM, it means infer jointly
+Another problem is to estimate which likely parameter distribution given the observation. In the case of SSM, it means infer jointly
 
 $$p(\theta,x_{1:T}|Y_{1:T}) \propto p_{\theta}(X_{1:T},Y_{1:T})p(\theta)$$
 

@@ -24,10 +24,10 @@ simulateReedFrost <- function(Nsim=100000, Npop=10000, p=0.00015, I0=1, Nit=50, 
   return(list(S=S,I=I))
 }
 
-RF_with_obs<-function(Npop=10000, p=0.00015)
+RF_with_obs<-function(Npop=10000, p=0.00015, Np = 1)
 {
-  initial_pop=Npop-rpois(n = 1, lambda = 20)
-  initial_I=rpois(n=1, lambda = 5)
+  initial_pop= Npop -rpois(n= Np, lambda = 5)#Npop-rpois(n = 1, lambda = 20)
+  initial_I=Npop- initial_pop #rpois(n=1, lambda = 5)
   simu_epi=simulateReedFrost(Nsim=1,Npop=initial_pop, p=p, I0=initial_I, fig=F)
   X<-cbind(simu_epi$S[1,],simu_epi$I[1,]) #the "hidden" Markov chain
   Y<-rnbinom(n=length(X[,1]),mu=.05*X[,2], size=10) #the observered process
@@ -48,8 +48,8 @@ RF_SIR <- function(Y, Np=1000, Npop=10000, p=0.00015)
   A<-matrix(rep(0,N*Np),ncol=N) #Ancestry of particle
 
   #Initialisation of the algorithm
-  Xp[,1,1]<-Npop-rpois(n = Np, lambda = 20) #initialisation of the size of susceptible population for each particle
-  Xp[,1,2]<-rpois(n= Np, lambda = 5) #initialisation of the size of the infectious population for each particle
+  Xp[,1,1]<-Npop -rpois(n= Np, lambda = 5)#-rpois(n = Np, lambda = 20) #initialisation of the size of susceptible population for each particle
+  Xp[,1,2]<-Npop- Xp[,1,1] # rpois(n= Np, lambda = 5) #initialisation of the size of the infectious population for each particle
   gammap[,1]<-dpois(Npop-Xp[,1,1], lambda = 20)*dpois(Xp[,1,2],lambda=5)*dnbinom(Y[1],mu=0.05*Xp[,1,2],size=10)
 
   wp[,1]<-gammap[,1]/(dpois(Npop-Xp[,1,1], lambda = 20)*dpois(Xp[,1,2],lambda=5))
